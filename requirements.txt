@@ -1,0 +1,7 @@
+Flask==3.0.2
+opencv-python
+numpy
+scikit-image
+scipy
+imagehash
+Pillow

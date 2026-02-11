@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Админ панель</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div class="container">
+  <h2>Админ панель</h2>
+  <a href="/logout">Выйти</a>
+
+  <hr>
+
+  <h3>Создать участника (обязательно фото)</h3>
+  <input id="p_login" placeholder="Логин (уникальный)">
+  <input id="p_name" placeholder="Имя (необязательно)">
+  <input id="p_photo" type="file" accept=".jpg,.jpeg,.png">
+
+  <!-- Превью выбранного файла (локально, без БД) -->
+  <div class="thumb-wrap">
+    <img id="photo_preview" class="thumb" src="" alt="preview" style="display:none;">
+    <div id="photo_preview_hint" class="hint">Превью появится после выбора файла</div>
+  </div>
+
+  <button onclick="addParticipant()">Создать участника</button>
+
+  <hr>
+
+  <h3>Создать мероприятие</h3>
+  <input id="e_title" placeholder="Название события">
+  <button onclick="addEvent()">Добавить событие</button>
+
+  <hr>
+
+  <h3>Участники</h3>
+  <div class="people">
+    {% for p in participants %}
+      <div class="person">
+        <img class="thumb" src="/participant_photo/{{p.id}}" alt="photo">
+        <div class="person-info">
+          <div><b>ID:</b> {{p.id}}</div>
+          <div><b>Логин:</b> {{p.login}}</div>
+          <div><b>Имя:</b> {{p.name or ""}}</div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <hr>
+
+  <h3>Журнал посещения</h3>
+  <button onclick="loadAttendance()">Обновить журнал</button>
+  <pre id="log">[]</pre>
+</div>
+
+<script src="/static/admin.js"></script>
+</body>
+</html>
