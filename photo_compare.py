@@ -251,9 +251,7 @@ class ImageComparator:
 
 def compare(image_path1: str, image_path2: str, threshold: float = 70.0):
     """
-    Совместимость с app.py:
-      match, score = photo_compare.compare(path1, path2)
-
+    Устаревшая функция для обратной совместимости.
     Возвращает:
       match: bool (True если score >= threshold)
       score: float (0..100)
@@ -262,3 +260,57 @@ def compare(image_path1: str, image_path2: str, threshold: float = 70.0):
     score = float(comparator.get_similarity_percentage())
     match = score >= float(threshold)
     return match, score
+
+
+def compare_faces(face_path1: str, face_path2: str) -> float:
+    """
+    Улучшенное сравнение лиц с акцентом на точность.
+    Использует комбинацию нескольких методов с оптимизированными весами.
+    
+    Args:
+        face_path1: путь к первому фото лица
+        face_path2: путь ко второму фото лица
+    
+    Returns:
+        float: процент схожести (0-100)
+    """
+    comparator = ImageComparator(face_path1, face_path2)
+    
+    # Получаем метрики
+    ssim_score = comparator.ssim_comparison()  # 0-1
+    hist_score = comparator.histogram_comparison('correlation')  # 0-1
+    phash_score = comparator.perceptual_hash_comparison('perceptual')  # 0-64
+    dhash_score = comparator.perceptual_hash_comparison('difference')  # 0-64
+    cosine_score = comparator.cosine_similarity_pixels()  # 0-1
+    feature_matches = comparator.feature_matching_comparison('orb')  # количество
+    
+    # Нормализация
+    phash_normalized = max(0, 1 - (phash_score / 64.0))  # 0-64 -> 1-0
+    dhash_normalized = max(0, 1 - (dhash_score / 64.0))  # 0-64 -> 1-0
+    
+    # Feature matching: нормализуем (хорошее совпадение > 50 points)
+    feature_normalized = min(1.0, feature_matches / 50.0)
+    
+    # Взвешенная комбинация (оптимизировано для лиц)
+    weights = {
+        'ssim': 0.25,          # Структурное сходство важно
+        'hist': 0.15,          # Цветовое распределение менее важно для лиц
+        'phash': 0.20,         # Перцептуальный хеш очень важен
+        'dhash': 0.15,         # Difference hash дополняет phash
+        'cosine': 0.10,        # Косинусное сходство как базовая метрика
+        'features': 0.15       # Feature matching критичен для уникальности
+    }
+    
+    weighted_score = (
+        ssim_score * weights['ssim'] +
+        hist_score * weights['hist'] +
+        phash_normalized * weights['phash'] +
+        dhash_normalized * weights['dhash'] +
+        cosine_score * weights['cosine'] +
+        feature_normalized * weights['features']
+    )
+    
+    # Конвертируем в проценты
+    similarity_percentage = max(0, min(100, weighted_score * 100))
+    
+    return float(similarity_percentage)

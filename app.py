@@ -7,6 +7,7 @@ from werkzeug.utils import secure_filename
 
 import photo_capture
 import photo_compare
+import face_recognition_module
 
 app = Flask(__name__)
 app.secret_key = "secret"
@@ -181,6 +182,108 @@ def get_attendance():
     return jsonify([list(x) for x in data])
 
 
+@app.route("/admin/export_attendance")
+def export_attendance():
+    """
+    Выгрузка журнала посещаемости в JSON-файл с фильтрами.
+    Параметры (опционально):
+      - participant_id: ID участника
+      - event_id: ID мероприятия
+      - date_from: дата начала (YYYY-MM-DD)
+      - date_to: дата окончания (YYYY-MM-DD)
+    """
+    if not require_admin():
+        return jsonify({"status": "forbidden"}), 403
+
+    # Получаем параметры фильтров
+    participant_id = request.args.get("participant_id", type=int)
+    event_id = request.args.get("event_id", type=int)
+    date_from = request.args.get("date_from")
+    date_to = request.args.get("date_to")
+
+    # Строим SQL-запрос с учётом фильтров
+    sql = """
+        SELECT 
+            a.id,
+            p.id as participant_id,
+            p.login,
+            p.name,
+            e.id as event_id,
+            e.title as event_title,
+            a.timestamp,
+            a.match_score
+        FROM attendance a
+        JOIN participants p ON p.id = a.participant_id
+        JOIN events e ON e.id = a.event_id
+        WHERE 1=1
+    """
+    params = []
+
+    if participant_id:
+        sql += " AND p.id = ?"
+        params.append(participant_id)
+    
+    if event_id:
+        sql += " AND e.id = ?"
+        params.append(event_id)
+    
+    if date_from:
+        sql += " AND DATE(a.timestamp) >= ?"
+        params.append(date_from)
+    
+    if date_to:
+        sql += " AND DATE(a.timestamp) <= ?"
+        params.append(date_to)
+
+    sql += " ORDER BY a.timestamp DESC"
+
+    data = db.query(sql, params, fetch=True)
+
+    # Формируем JSON-структуру
+    result = {
+        "export_date": str(datetime.datetime.now()),
+        "filters": {
+            "participant_id": participant_id,
+            "event_id": event_id,
+            "date_from": date_from,
+            "date_to": date_to
+        },
+        "total_records": len(data),
+        "records": [
+            {
+                "id": row["id"],
+                "participant": {
+                    "id": row["participant_id"],
+                    "login": row["login"],
+                    "name": row["name"]
+                },
+                "event": {
+                    "id": row["event_id"],
+                    "title": row["event_title"]
+                },
+                "timestamp": row["timestamp"],
+                "match_score": row["match_score"]
+            }
+            for row in data
+        ]
+    }
+
+    # Сохраняем в файл
+    export_filename = f"attendance_export_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    export_path = os.path.join("tmp", export_filename)
+    
+    import json
+    with open(export_path, "w", encoding="utf-8") as f:
+        json.dump(result, f, ensure_ascii=False, indent=2)
+
+    return jsonify({
+        "status": "ok",
+        "filename": export_filename,
+        "path": export_path,
+        "total_records": len(data)
+    })
+
+
 # ---------- USER: регистрация на событие ----------
 @app.route("/register", methods=["POST"])
 def register():
@@ -226,45 +329,80 @@ def register():
         except: pass
         return jsonify({"status": "bad_photo", "msg": "no face / bad quality"}), 200
 
-    # 2) сверяем со всеми эталонными фото из БД (как у тебя было)
+    # 2) сверяем со ВСЕМИ эталонными фото из БД и находим лучшее совпадение
     participants = db.query("SELECT id, login, name, photo_blob, photo_ext FROM participants", fetch=True)
 
-    best = None
+    if not participants:
+        try: os.remove(tmp_path)
+        except: pass
+        return jsonify({"status": "not_found", "msg": "no participants in db"})
+
+    # Проходим по ВСЕМ участникам и собираем результаты
+    all_scores = []
     for p in participants:
         ref_path = os.path.join(TMP_DIR, f"ref_{p['id']}{p['photo_ext']}")
         with open(ref_path, "wb") as out:
             out.write(p["photo_blob"])
 
         try:
-            match, score = photo_compare.compare(tmp_path, ref_path)
+            # Используем улучшенный алгоритм распознавания лиц
+            score = face_recognition_module.compare_faces_advanced(tmp_path, ref_path)
+            all_scores.append({
+                "participant_id": p["id"],
+                "login": p["login"],
+                "name": p["name"],
+                "score": score
+            })
+            print(f"✓ {p['login']}: {score:.1f}%")
+        except Exception as e:
+            print(f"✗ Ошибка сравнения с {p['login']}: {e}")
+            # Добавляем с нулевым score чтобы не пропустить участника
+            all_scores.append({
+                "participant_id": p["id"],
+                "login": p["login"],
+                "name": p["name"],
+                "score": 0.0
+            })
         finally:
             try: os.remove(ref_path)
             except: pass
 
-        if best is None or score > best[2]:
-            best = (p["id"], p["login"], score)
-
-        if match:
-            try:
-                db.query(
-                    "INSERT INTO attendance(participant_id,event_id,timestamp,match_score) VALUES (?,?,?,?)",
-                    (p["id"], event_id, str(datetime.datetime.now()), score)
-                )
-            except:
-                try: os.remove(tmp_path)
-                except: pass
-                return jsonify({"status": "already_registered", "login": p["login"], "score": score})
-
-            try: os.remove(tmp_path)
-            except: pass
-            return jsonify({"status": "registered", "login": p["login"], "name": p["name"], "score": score})
-
     try: os.remove(tmp_path)
     except: pass
 
-    if best:
-        return jsonify({"status": "not_found", "best_candidate": best[1], "best_score": best[2]})
-    return jsonify({"status": "not_found", "msg": "no participants in db"})
+    # Находим участника с максимальным score
+    best_match = max(all_scores, key=lambda x: x["score"])
+    
+    # Порог совпадения: 70%
+    THRESHOLD = 70.0
+    
+    if best_match["score"] >= THRESHOLD:
+        # Пытаемся зарегистрировать
+        try:
+            db.query(
+                "INSERT INTO attendance(participant_id,event_id,timestamp,match_score) VALUES (?,?,?,?)",
+                (best_match["participant_id"], event_id, str(datetime.datetime.now()), best_match["score"])
+            )
+            return jsonify({
+                "status": "registered",
+                "login": best_match["login"],
+                "name": best_match["name"],
+                "score": best_match["score"]
+            })
+        except:
+            # Уже зарегистрирован
+            return jsonify({
+                "status": "already_registered",
+                "login": best_match["login"],
+                "score": best_match["score"]
+            })
+    else:
+        # Не найдено достаточного совпадения
+        return jsonify({
+            "status": "not_found",
+            "best_candidate": best_match["login"],
+            "best_score": best_match["score"]
+        })
 
 
 if __name__ == "__main__":

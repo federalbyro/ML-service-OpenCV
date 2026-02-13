@@ -1,60 +1,89 @@
 <!DOCTYPE html>
 <html lang="ru">
-<head>
-  <meta charset="UTF-8">
-  <title>Админ панель</title>
-  <link rel="stylesheet" href="/static/style.css">
-</head>
-<body>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Админ панель</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h2>Админ панель</h2>
+      <a href="/logout">Выйти</a>
 
-<div class="container">
-  <h2>Админ панель</h2>
-  <a href="/logout">Выйти</a>
+      <hr />
 
-  <hr>
+      <h3>Создать участника (обязательно фото)</h3>
+      <input id="p_login" placeholder="Логин (уникальный)" />
+      <input id="p_name" placeholder="Имя (необязательно)" />
+      <input id="p_photo" type="file" accept=".jpg,.jpeg,.png" />
 
-  <h3>Создать участника (обязательно фото)</h3>
-  <input id="p_login" placeholder="Логин (уникальный)">
-  <input id="p_name" placeholder="Имя (необязательно)">
-  <input id="p_photo" type="file" accept=".jpg,.jpeg,.png">
-
-  <!-- Превью выбранного файла (локально, без БД) -->
-  <div class="thumb-wrap">
-    <img id="photo_preview" class="thumb" src="" alt="preview" style="display:none;">
-    <div id="photo_preview_hint" class="hint">Превью появится после выбора файла</div>
-  </div>
-
-  <button onclick="addParticipant()">Создать участника</button>
-
-  <hr>
-
-  <h3>Создать мероприятие</h3>
-  <input id="e_title" placeholder="Название события">
-  <button onclick="addEvent()">Добавить событие</button>
-
-  <hr>
-
-  <h3>Участники</h3>
-  <div class="people">
-    {% for p in participants %}
-      <div class="person">
-        <img class="thumb" src="/participant_photo/{{p.id}}" alt="photo">
-        <div class="person-info">
-          <div><b>ID:</b> {{p.id}}</div>
-          <div><b>Логин:</b> {{p.login}}</div>
-          <div><b>Имя:</b> {{p.name or ""}}</div>
-        </div>
+      <!-- Превью выбранного файла (локально, без БД) -->
+      <div class="thumb-wrap">
+        <img id="photo_preview" class="thumb" src="" alt="preview" style="display:none;" />
+        <div id="photo_preview_hint" class="hint">Превью появится после выбора файла</div>
       </div>
-    {% endfor %}
-  </div>
 
-  <hr>
+      <button onclick="addParticipant()">Создать участника</button>
 
-  <h3>Журнал посещения</h3>
-  <button onclick="loadAttendance()">Обновить журнал</button>
-  <pre id="log">[]</pre>
-</div>
+      <hr />
 
-<script src="/static/admin.js"></script>
-</body>
+      <h3>Создать мероприятие</h3>
+      <input id="e_title" placeholder="Название события" />
+      <button onclick="addEvent()">Добавить событие</button>
+
+      <hr />
+
+      <h3>Участники</h3>
+      <div class="people">
+        {% for p in participants %}
+          <div class="person">
+            <img class="thumb" src="/participant_photo/{{ p.id }}" alt="photo" />
+            <div class="person-info">
+              <div>
+                <b>ID:</b> {{ p.id }}
+              </div>
+              <div>
+                <b>Логин:</b> {{ p.login }}
+              </div>
+              <div>
+                <b>Имя:</b> {{ p.name or '' }}
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+
+      <hr />
+
+      <h3>Журнал посещения</h3>
+      <button onclick="loadAttendance()">Обновить журнал</button>
+      <pre id="log">[]</pre>
+
+      <hr />
+
+      <h3>Экспорт журнала в JSON</h3>
+      <div class="export-form">
+        <div>
+          <label>Участник (ID):</label>
+          <input id="export_participant_id" type="number" placeholder="Не указано = все" />
+        </div>
+        <div>
+          <label>Мероприятие (ID):</label>
+          <input id="export_event_id" type="number" placeholder="Не указано = все" />
+        </div>
+        <div>
+          <label>Дата от (YYYY-MM-DD):</label>
+          <input id="export_date_from" type="date" />
+        </div>
+        <div>
+          <label>Дата до (YYYY-MM-DD):</label>
+          <input id="export_date_to" type="date" />
+        </div>
+        <button onclick="exportAttendance()">Экспортировать в JSON</button>
+        <div id="export_result" style="margin-top: 10px; color: green;"></div>
+      </div>
+    </div>
+
+    <script src="/static/admin.js"></script>
+  </body>
 </html>

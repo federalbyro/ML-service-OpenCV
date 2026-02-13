@@ -1,66 +1,359 @@
 body {
-    font-family: Arial, sans-serif;
-    background: #f4f6f9;
-    margin: 0;
-    padding: 0;
+  font-family: Arial, sans-serif;
+  background: #f4f6f9;
+  margin: 0;
+  padding: 0;
 }
 
 .container {
-    width: 500px;
-    margin: 60px auto;
-    background: white;
-    padding: 30px;
-    border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  width: 500px;
+  margin: 60px auto;
+  background: white;
+  padding: 30px;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 h2 {
-    text-align: center;
-    margin-bottom: 20px;
+  text-align: center;
+  margin-bottom: 20px;
 }
 
 input {
-    width: 100%;
-    padding: 10px;
-    margin: 8px 0;
-    border-radius: 6px;
-    border: 1px solid #ccc;
+  width: 100%;
+  padding: 10px;
+  margin: 8px 0;
+  border-radius: 6px;
+  border: 1px solid #ccc;
 }
 
 button {
-    width: 100%;
-    padding: 10px;
-    margin-top: 10px;
-    border: none;
-    border-radius: 6px;
-    background: #007bff;
-    color: white;
-    cursor: pointer;
-    font-weight: bold;
+  width: 100%;
+  padding: 10px;
+  margin-top: 10px;
+  border: none;
+  border-radius: 6px;
+  background: #007bff;
+  color: white;
+  cursor: pointer;
+  font-weight: bold;
 }
 
 button:hover {
-    background: #0056b3;
+  background: #0056b3;
 }
 
 pre {
-    background: #eee;
-    padding: 10px;
-    border-radius: 6px;
-    max-height: 300px;
-    overflow-y: auto;
+  background: #eee;
+  padding: 10px;
+  border-radius: 6px;
+  max-height: 300px;
+  overflow-y: auto;
 }
 
-.thumb-wrap { margin-top: 10px; display: flex; gap: 12px; align-items: center; }
-.thumb { width: 80px; height: 80px; object-fit: cover; border-radius: 10px; border: 1px solid #ddd; background: #fafafa; }
-.hint { font-size: 13px; color: #777; }
+.thumb-wrap {
+  margin-top: 10px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.thumb {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  background: #fafafa;
+}
+.hint {
+  font-size: 13px;
+  color: #777;
+}
 
-.people { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
-.person { display: flex; gap: 12px; align-items: center; padding: 10px; border: 1px solid #eee; border-radius: 10px; background: #fff; }
-.person-info { font-size: 14px; }
-
+.people {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 10px;
+}
+.person {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  background: #fff;
+}
+.person-info {
+  font-size: 14px;
+}
 
 .hint {
   font-size: 13px;
   color: #777;
+}
+
+.export-form {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  margin-top: 10px;
+}
+
+.export-form > div {
+  margin-bottom: 12px;
+}
+
+.export-form label {
+  display: block;
+  font-size: 14px;
+  font-weight: bold;
+  margin-bottom: 5px;
+  color: #333;
+}
+
+.export-form input {
+  margin: 0;
+}
+
+#export_result {
+  padding: 10px;
+  border-radius: 6px;
+  background: #d4edda;
+  border: 1px solid #c3e6cb;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+#export_result code {
+  background: #fff;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: monospace;
+  color: #333;
+}
+
+/* === Стили для пользовательского интерфейса === */
+
+.form-section {
+  margin-bottom: 20px;
+}
+
+.form-section label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 5px;
+  color: #333;
+  font-size: 14px;
+}
+
+.form-section select,
+.form-section input {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 15px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+}
+
+/* Переключатель режимов */
+.mode-switch {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.mode-btn {
+  flex: 1;
+  padding: 12px;
+  border: 2px solid #007bff;
+  background: white;
+  color: #007bff;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 14px;
+  transition: all 0.3s;
+}
+
+.mode-btn:hover {
+  background: #e7f3ff;
+}
+
+.mode-btn.active {
+  background: #007bff;
+  color: white;
+}
+
+/* Секции фото */
+.photo-mode {
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.photo-mode label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 8px;
+  color: #333;
+  font-size: 14px;
+}
+
+/* Контейнер камеры */
+.camera-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+
+#video {
+  width: 100%;
+  max-width: 400px;
+  border-radius: 10px;
+  border: 3px solid #007bff;
+  background: #000;
+}
+
+.camera-controls {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.camera-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  background: #28a745;
+  color: white;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 14px;
+  transition: background 0.3s;
+}
+
+.camera-btn:hover {
+  background: #218838;
+}
+
+#btnRetake {
+  background: #ffc107;
+  color: #333;
+}
+
+#btnRetake:hover {
+  background: #e0a800;
+}
+
+/* Превью */
+.preview-wrap {
+  margin-top: 15px;
+  text-align: center;
+}
+
+.preview-img {
+  max-width: 100%;
+  max-height: 300px;
+  border-radius: 10px;
+  border: 2px solid #ddd;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Кнопка регистрации */
+.submit-btn {
+  width: 100%;
+  padding: 15px;
+  margin-top: 20px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.submit-btn:hover {
+  background: #0056b3;
+}
+
+/* Результат */
+.result-box {
+  margin-top: 20px;
+  padding: 15px;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.result-box .success {
+  color: #155724;
+  background: #d4edda;
+  border: 1px solid #c3e6cb;
+  padding: 10px;
+  border-radius: 6px;
+  display: block;
+  margin-bottom: 10px;
+  font-weight: bold;
+}
+
+.result-box .error {
+  color: #721c24;
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  padding: 10px;
+  border-radius: 6px;
+  display: block;
+  margin-bottom: 10px;
+  font-weight: bold;
+}
+
+.result-box .warning {
+  color: #856404;
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  padding: 10px;
+  border-radius: 6px;
+  display: block;
+  margin-bottom: 10px;
+  font-weight: bold;
+}
+
+.result-box .info {
+  color: #004085;
+  background: #cce5ff;
+  border: 1px solid #b8daff;
+  padding: 10px;
+  border-radius: 6px;
+  display: block;
+  margin-bottom: 10px;
+  font-weight: bold;
+}
+
+/* Адаптивность */
+@media (max-width: 600px) {
+  .container {
+    width: 90%;
+    margin: 20px auto;
+    padding: 20px;
+  }
+
+  .mode-switch {
+    flex-direction: column;
+  }
+
+  .camera-controls {
+    flex-direction: column;
+  }
+
+  .camera-btn {
+    width: 100%;
+  }
 }
