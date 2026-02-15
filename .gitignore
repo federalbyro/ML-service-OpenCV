@@ -10,6 +10,8 @@ __pycache__/
 *$py.class
 *.so
 
+backup_20260215_174907/
+
 # Дистрибутивы / сборки
 dist/
 build/
@@ -52,3 +54,11 @@ htmlcov/
 
 # Jupyter Notebook
 .ipynb_checkpoints
+
+# Старые файлы (для обратной совместимости, можно удалить позже)
+# app.py
+# db.py
+# photo_capture.py
+# photo_compare.py
+# face_recognition_module.py
+# test_comparison.py

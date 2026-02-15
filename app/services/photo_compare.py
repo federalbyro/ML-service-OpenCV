@@ -40,8 +40,8 @@ class ImageComparator:
             float: значение MSE
         """
         # Приведение к одинаковому размеру
-        img1_resized = cv2.resize(self.img1_cv, (300, 300))
-        img2_resized = cv2.resize(self.img2_cv, (300, 300))
+        img1_resized = cv2.resize(self.img1_cv, (300, 300)) # type: ignore
+        img2_resized = cv2.resize(self.img2_cv, (300, 300)) # type: ignore
         
         # Вычисление MSE
         mse = np.mean((img1_resized.astype(float) - img2_resized.astype(float)) ** 2)
@@ -56,14 +56,14 @@ class ImageComparator:
             float: индекс структурного сходства
         """
         # Приведение к одинаковому размеру и grayscale
-        img1_gray = cv2.cvtColor(self.img1_cv, cv2.COLOR_BGR2GRAY)
-        img2_gray = cv2.cvtColor(self.img2_cv, cv2.COLOR_BGR2GRAY)
+        img1_gray = cv2.cvtColor(self.img1_cv, cv2.COLOR_BGR2GRAY) # type: ignore
+        img2_gray = cv2.cvtColor(self.img2_cv, cv2.COLOR_BGR2GRAY) # type: ignore
         
         img1_resized = cv2.resize(img1_gray, (300, 300))
         img2_resized = cv2.resize(img2_gray, (300, 300))
         
         # Вычисление SSIM
-        similarity_index, _ = ssim(img1_resized, img2_resized, full=True)
+        similarity_index, _ = ssim(img1_resized, img2_resized, full=True) # type: ignore
         return similarity_index
     
     def histogram_comparison(self, method='correlation'):
@@ -77,8 +77,8 @@ class ImageComparator:
             float: мера сходства (зависит от метода)
         """
         # Приведение к одинаковому размеру
-        img1_resized = cv2.resize(self.img1_cv, (300, 300))
-        img2_resized = cv2.resize(self.img2_cv, (300, 300))
+        img1_resized = cv2.resize(self.img1_cv, (300, 300)) # type: ignore
+        img2_resized = cv2.resize(self.img2_cv, (300, 300)) # type: ignore
         
         # Вычисление гистограмм для каждого канала
         hist1 = cv2.calcHist([img1_resized], [0, 1, 2], None, [8, 8, 8], [0, 256, 0, 256, 0, 256])

@@ -5,3 +5,4 @@ scikit-image
 scipy
 imagehash
 Pillow
+face_recognition
