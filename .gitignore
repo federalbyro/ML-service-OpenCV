@@ -1,2 +1,54 @@
-./venv
-./__pycache__
+# Python виртуальное окружение
+venv/
+env/
+ENV/
+.venv/
+
+# Скомпилированные Python файлы
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Дистрибутивы / сборки
+dist/
+build/
+*.egg-info/
+*.egg
+
+# Папки с загруженными файлами и временными данными
+uploads/*
+!uploads/.gitkeep
+tmp/*
+!tmp/.gitkeep
+
+# База данных
+*.db
+*.sqlite
+*.sqlite3
+
+# Переменные окружения
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+._*
+
+# Логи
+*.log
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Jupyter Notebook
+.ipynb_checkpoints
