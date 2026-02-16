@@ -1,8 +1,13 @@
 Flask==3.0.2
-opencv-python
-numpy
+Werkzeug==3.0.1
+
+numpy>=1.26,<3
+opencv-python>=4.8
+
+mediapipe
+
+# если где-то используешь эти штуки (у тебя есть в проекте comparator)
 scikit-image
 scipy
 imagehash
 Pillow
-face_recognition

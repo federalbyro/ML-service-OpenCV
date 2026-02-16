@@ -1,3 +1,4 @@
+# app/routes/user.py
 """
 Роуты для пользовательского интерфейса.
 """
@@ -5,6 +6,7 @@ from flask import Blueprint, render_template, request, jsonify, current_app, Res
 import os
 import datetime
 from werkzeug.utils import secure_filename
+import sqlite3
 
 from app.database import db
 from app.services import photo_capture, face_recognition
@@ -35,7 +37,6 @@ def participant_photo(pid: int):
 @bp.route("/register", methods=["POST"])
 def register():
     """Регистрация пользователя на событие."""
-    # form-data (обычная HTML-форма)
     event_id = request.form.get("event_id", type=int)
     name = (request.form.get("name") or "").strip()
 
@@ -65,7 +66,7 @@ def register():
     with open(tmp_path, "wb") as out:
         out.write(raw)
 
-    # 1) проверка лица
+    # 1) проверка лица (простая через OpenCV)
     try:
         ok = photo_capture.validate_face(tmp_path)
     except Exception as e:
@@ -78,7 +79,7 @@ def register():
         except: pass
         return jsonify({"status": "bad_photo", "msg": "no face / bad quality"}), 200
 
-    # 2) сверяем со ВСЕМИ эталонными фото из БД и находим лучшее совпадение
+    # 2) сверяем со ВСЕМИ эталонными фото из БД
     participants = db.query("SELECT id, login, name, photo_blob, photo_ext FROM participants", fetch=True)
 
     if not participants:
@@ -86,15 +87,20 @@ def register():
         except: pass
         return jsonify({"status": "not_found", "msg": "no participants in db"})
 
-    # Проходим по ВСЕМ участникам и собираем результаты
+    # ВАЖНО: сохраняем все ref_path для последующего удаления
+    ref_paths = []
     all_scores = []
+    
     for p in participants:
         ref_path = os.path.join(tmp_dir, f"ref_{p['id']}{p['photo_ext']}")
+        ref_paths.append(ref_path)
+        
+        # Записываем файл
         with open(ref_path, "wb") as out:
             out.write(p["photo_blob"])
 
         try:
-            # Используем улучшенный алгоритм распознавания лиц
+            # Сравниваем (файл существует на диске!)
             score = face_recognition.compare_faces_advanced(tmp_path, ref_path)
             all_scores.append({
                 "participant_id": p["id"],
@@ -105,50 +111,49 @@ def register():
             print(f"✓ {p['login']}: {score:.1f}%")
         except Exception as e:
             print(f"✗ Ошибка сравнения с {p['login']}: {e}")
-            # Добавляем с нулевым score чтобы не пропустить участника
             all_scores.append({
                 "participant_id": p["id"],
                 "login": p["login"],
                 "name": p["name"],
                 "score": 0.0
             })
-        finally:
-            try: os.remove(ref_path)
-            except: pass
 
+    # Удаляем ВСЕ временные файлы ПОСЛЕ сравнения
     try: os.remove(tmp_path)
     except: pass
+    
+    for ref_path in ref_paths:
+        try: os.remove(ref_path)
+        except: pass
 
-    # Находим участника с максимальным score
+    # Находим лучшее совпадение
     best_match = max(all_scores, key=lambda x: x["score"])
     
-    # Порог совпадения: 70%
     THRESHOLD = 70.0
     
     if best_match["score"] >= THRESHOLD:
-        # Пытаемся зарегистрировать
-        try:
-            db.query(
-                "INSERT INTO attendance(participant_id,event_id,timestamp,match_score) VALUES (?,?,?,?)",
-                (best_match["participant_id"], event_id, str(datetime.datetime.now()), best_match["score"])
-            )
-            return jsonify({
-                "status": "registered",
-                "login": best_match["login"],
-                "name": best_match["name"],
-                "score": best_match["score"]
-            })
-        except:
-            # Уже зарегистрирован
-            return jsonify({
-                "status": "already_registered",
-                "login": best_match["login"],
-                "score": best_match["score"]
-            })
-    else:
-        # Не найдено достаточного совпадения
+        now = str(datetime.datetime.now())
+
+        # ИДЕМПОТЕНТНЫЙ UPSERT
+        db.query(
+            """
+            INSERT INTO attendance(participant_id, event_id, timestamp, match_score)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(participant_id, event_id) 
+            DO UPDATE SET timestamp=excluded.timestamp, match_score=excluded.match_score
+            """,
+            (best_match["participant_id"], event_id, now, best_match["score"])
+        )
+        
         return jsonify({
-            "status": "not_found",
-            "best_candidate": best_match["login"],
-            "best_score": best_match["score"]
+            "status": "registered",
+            "login": best_match["login"],
+            "name": best_match["name"],
+            "score": best_match["score"]
         })
+    
+    return jsonify({
+        "status": "not_found",
+        "best_candidate": best_match["login"],
+        "best_score": best_match["score"]
+    })

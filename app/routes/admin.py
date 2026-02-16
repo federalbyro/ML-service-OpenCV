@@ -6,6 +6,7 @@ import os
 import datetime
 import sqlite3
 
+from app.services import face_recognition
 from app.database import db
 from app.services import photo_capture
 from app.routes.auth import require_admin
@@ -77,7 +78,13 @@ def add_participant():
         out.write(raw)
 
     try:
-        ok = photo_capture.validate_face(tmp_path)
+        ok = photo_capture.validate_face(
+            tmp_path,
+            scaleFactor=1.1,
+            minNeighbors=4,
+            minSize=(80, 80),
+            require_single_face=True
+        )
     except Exception as e:
         try:
             os.remove(tmp_path)
