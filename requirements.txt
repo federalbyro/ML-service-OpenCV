@@ -6,6 +6,10 @@ opencv-python>=4.8
 
 mediapipe
 
+# Face recognition with deep learning
+face_recognition
+dlib
+
 # если где-то используешь эти штуки (у тебя есть в проекте comparator)
 scikit-image
 scipy

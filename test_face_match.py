@@ -93,8 +93,8 @@ def main():
         photo2 = sys.argv[2]
     else:
         # Используем дефолтные имена
-        photo1 = './ya3.jpg'
-        photo2 = './ya4.jpg'
+        photo1 = './test_face_samples/ya3.jpg'
+        photo2 = './test_face_samples/ya2.jpg'
         
         # Подсказка пользователю
         if not os.path.exists(photo1) or not os.path.exists(photo2):

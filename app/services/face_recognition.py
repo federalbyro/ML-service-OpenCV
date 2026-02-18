@@ -5,7 +5,14 @@ import numpy as np
 import cv2
 import os
 
-# Пытаемся импортировать MediaPipe
+# Пытаемся импортировать face_recognition (dlib-based)
+try:
+    import face_recognition as fr
+    FACE_RECOGNITION_AVAILABLE = True
+except ImportError:
+    FACE_RECOGNITION_AVAILABLE = False
+
+# Пытаемся импортировать MediaPipe (fallback)
 try:
     from mediapipe.tasks import python
     from mediapipe.tasks.python import vision
@@ -67,6 +74,17 @@ def _get_face_landmarker():
 
 def validate_face_one(image_path: str) -> bool:
     """Проверяет наличие ровно одного лица на фото"""
+    
+    # Приоритет: face_recognition (более точный)
+    if FACE_RECOGNITION_AVAILABLE:
+        try:
+            image = fr.load_image_file(image_path)
+            face_locations = fr.face_locations(image, model="hog")  # hog быстрее, cnn точнее
+            return len(face_locations) == 1
+        except Exception as e:
+            print(f"face_recognition validation failed: {e}")
+    
+    # Fallback: MediaPipe
     if MEDIAPIPE_AVAILABLE and os.path.exists(MODEL_PATH):
         try:
             landmarker = _get_face_landmarker()
@@ -207,7 +225,38 @@ def _compute_simple_lbp(image: np.ndarray) -> np.ndarray:
 
 
 def get_embedding(image_path: str) -> Optional[np.ndarray]:
-    """Извлекает ГИБРИДНЫЙ эмбеддинг: landmarks + текстурные признаки"""
+    """Извлекает эмбеддинг лица используя deep learning (face_recognition/dlib)"""
+    
+    # Используем face_recognition (dlib) - предобученная нейросеть
+    if FACE_RECOGNITION_AVAILABLE:
+        try:
+            # Загружаем изображение
+            image = fr.load_image_file(image_path)
+            
+            # Находим лица
+            face_locations = fr.face_locations(image, model="hog")
+            
+            if len(face_locations) != 1:
+                return None
+            
+            # Получаем 128-мерный вектор признаков
+            # Это предобученная нейросеть, которая выучила различать лица
+            face_encodings = fr.face_encodings(image, face_locations, num_jitters=1)
+            
+            if len(face_encodings) != 1:
+                return None
+            
+            embedding = face_encodings[0]
+            
+            # Уже нормализован
+            return embedding.astype(np.float32)
+            
+        except Exception as e:
+            print(f"Ошибка face_recognition: {e}")
+            return None
+    
+    # Fallback: используем старый метод с MediaPipe + текстура
+    # (если face_recognition не установлен)
     if not MEDIAPIPE_AVAILABLE or not os.path.exists(MODEL_PATH):
         return None
     
@@ -228,27 +277,52 @@ def get_embedding(image_path: str) -> Optional[np.ndarray]:
 
         landmarks = result.face_landmarks[0]
         
-        # 1. Landmarks эмбеддинг (геометрия)
-        points = np.array([[lm.x, lm.y, lm.z] for lm in landmarks], dtype=np.float32)
-        points_centered = points - points.mean(axis=0)
-        scale = np.sqrt(np.mean(np.sum(points_centered[:, :2] ** 2, axis=1))) + 1e-12
-        points_normalized = points_centered / scale
-        landmark_embedding = points_normalized.flatten()
-        landmark_embedding /= (np.linalg.norm(landmark_embedding) + 1e-12)
+        # Используем текстурные признаки (старый метод)
+        h, w = bgr.shape[:2]
         
-        # 2. Текстурные признаки из ключевых областей
-        texture_features = _extract_face_region_features(bgr, landmarks)
-        texture_features /= (np.linalg.norm(texture_features) + 1e-12)
+        def extract_region_features_simple(region_landmarks_indices):
+            """Простое извлечение признаков"""
+            points = []
+            for idx in region_landmarks_indices:
+                if idx < len(landmarks):
+                    lm = landmarks[idx]
+                    points.append((int(lm.x * w), int(lm.y * h)))
+            
+            if not points:
+                return np.zeros(64, dtype=np.float32)
+            
+            xs = [p[0] for p in points]
+            ys = [p[1] for p in points]
+            x_min, x_max = max(0, min(xs) - 10), min(w, max(xs) + 10)
+            y_min, y_max = max(0, min(ys) - 10), min(h, max(ys) + 10)
+            
+            if x_max <= x_min or y_max <= y_min:
+                return np.zeros(64, dtype=np.float32)
+            
+            region = bgr[y_min:y_max, x_min:x_max]
+            if region.size == 0:
+                return np.zeros(64, dtype=np.float32)
+            
+            region_resized = cv2.resize(region, (32, 32))
+            gray = cv2.cvtColor(region_resized, cv2.COLOR_BGR2GRAY)
+            
+            # Простые признаки
+            hist, _ = np.histogram(gray.ravel(), bins=64, range=(0, 256))
+            hist = hist.astype(np.float32) / (hist.sum() + 1e-7)
+            
+            return hist
         
-        # 3. Комбинируем: больше веса на текстуру!
-        combined = np.concatenate([
-            landmark_embedding * 0.3,  # Геометрия - 30%
-            texture_features * 0.7     # Текстура - 70%
-        ])
+        # Основные области
+        features = []
+        features.extend(extract_region_features_simple(list(range(33, 42))))  # левый глаз
+        features.extend(extract_region_features_simple(list(range(263, 272))))  # правый глаз
+        features.extend(extract_region_features_simple(list(range(1, 20))))  # нос
+        features.extend(extract_region_features_simple(list(range(61, 80))))  # рот
         
-        combined /= (np.linalg.norm(combined) + 1e-12)
+        embedding = np.array(features, dtype=np.float32)
+        embedding /= (np.linalg.norm(embedding) + 1e-12)
         
-        return combined
+        return embedding
         
     except Exception as e:
         print(f"Ошибка get_embedding: {e}")
@@ -256,7 +330,7 @@ def get_embedding(image_path: str) -> Optional[np.ndarray]:
 
 
 def compare_faces_advanced(image_path1: str, image_path2: str) -> float:
-    """Сравнивает два лица используя гибридные признаки"""
+    """Сравнивает два лица используя deep learning эмбеддинги"""
     try:
         e1 = get_embedding(image_path1)
         e2 = get_embedding(image_path2)
@@ -265,26 +339,59 @@ def compare_faces_advanced(image_path1: str, image_path2: str) -> float:
             return 0.0
 
         # Косинусное сходство
-        cos_sim = float(np.dot(e1, e2))
+        cos_sim = float(np.dot(e1, e2) / (np.linalg.norm(e1) * np.linalg.norm(e2) + 1e-12))
         
         # Евклидово расстояние
         euclidean_dist = float(np.linalg.norm(e1 - e2))
         
-        # СТРОГИЕ ПОРОГИ для гибридных признаков
-        threshold_min = 0.55
-        threshold_max = 0.95
+        # Пороги для face_recognition (128-мерные эмбеддинги от dlib)
+        # Стандартный порог для face_recognition - расстояние 0.6
+        # Преобразуем в проценты для удобства
         
-        if cos_sim < threshold_min:
-            percentage = 0.0
-        elif cos_sim > threshold_max:
-            percentage = 100.0
+        if FACE_RECOGNITION_AVAILABLE:
+            # face_recognition использует Euclidean distance
+            # Типичные значения:
+            # < 0.4  = очень похожи (один человек)
+            # 0.4-0.6 = похожи (возможно один человек)
+            # > 0.6  = разные люди
+            
+            # Преобразуем в проценты (инвертированная логика для расстояния)
+            if euclidean_dist < 0.4:
+                percentage = 100.0 - (euclidean_dist / 0.4) * 10.0  # 90-100%
+            elif euclidean_dist < 0.6:
+                percentage = 90.0 - ((euclidean_dist - 0.4) / 0.2) * 40.0  # 50-90%
+            elif euclidean_dist < 1.0:
+                percentage = 50.0 - ((euclidean_dist - 0.6) / 0.4) * 50.0  # 0-50%
+            else:
+                percentage = 0.0
+            
+            percentage = max(0.0, min(100.0, percentage))
+            
+            print(f"Eucl: {euclidean_dist:.4f}, Cos: {cos_sim:.4f} -> {percentage:.1f}%")
         else:
-            normalized = (cos_sim - threshold_min) / (threshold_max - threshold_min)
-            percentage = (normalized ** 2) * 100.0
-        
-        percentage = max(0.0, min(100.0, percentage))
-        
-        print(f"Cos: {cos_sim:.4f}, Eucl: {euclidean_dist:.4f} -> {percentage:.1f}%")
+            # Fallback: используем косинусное сходство для старого метода
+            threshold_very_low = 0.75
+            threshold_low = 0.88
+            threshold_high = 0.94
+            threshold_perfect = 0.97
+            
+            if cos_sim < threshold_very_low:
+                percentage = 0.0
+            elif cos_sim < threshold_low:
+                normalized = (cos_sim - threshold_very_low) / (threshold_low - threshold_very_low)
+                percentage = normalized * 50.0
+            elif cos_sim < threshold_high:
+                normalized = (cos_sim - threshold_low) / (threshold_high - threshold_low)
+                percentage = 50.0 + normalized * 40.0
+            elif cos_sim < threshold_perfect:
+                normalized = (cos_sim - threshold_high) / (threshold_perfect - threshold_high)
+                percentage = 90.0 + normalized * 10.0
+            else:
+                percentage = 100.0
+            
+            percentage = max(0.0, min(100.0, percentage))
+            
+            print(f"Cos: {cos_sim:.4f}, Eucl: {euclidean_dist:.4f} -> {percentage:.1f}%")
         
         return float(percentage)
         
